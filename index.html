@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Вибір настрою</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg: #121214;
+      --card: #1c1c21;
+      --card-active: #2e1d27;
+      --border: #2d2d35;
+      --accent: #b84a62;
+      --text: #f3f3f6;
+      --muted: #9b9ba7;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      padding: 18px 16px 36px;
+      line-height: 1.4;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+
+    .section {
+      margin-bottom: 22px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 10px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .btn-option {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 11px 12px;
+      font-size: 14px;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-option.full-width {
+      grid-column: span 2;
+    }
+
+    .btn-option.selected {
+      background: var(--card-active);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 88px;
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 14px;
+      resize: vertical;
+      outline: none;
+    }
+
+    textarea:focus {
+      border-color: var(--accent);
+    }
+
+    .submit-btn {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+
+    .submit-btn:active {
+      opacity: 0.9;
+    }
+
+    .status {
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+      min-height: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Обери вайб</h1>
+  <p class="subtitle">Без зайвих спойлерів. Можна обрати будь-що або пропустити.</p>
+
+  <div id="app"></div>
+
+  <div class="section">
+    <div class="section-title">Коментар</div>
+    <textarea id="comment" placeholder="Побажання, настрій або деталі (необов’язково)..."></textarea>
+  </div>
+
+  <button class="submit-btn" id="sendBtn">Надіслати вибір</button>
+  <div class="status" id="status"></div>
+
+  <script>
+    // =========================================================================
+    // ЄДИНЕ МІСЦЕ ДЛЯ ЗМІНИ НАЗВ І ПОЗИЦІЙ
+    // label — що бачить він у меню
+    // hint  — підказка для тебе у сповіщенні
+    // =========================================================================
+    const CONFIG_SECTIONS = [
+      {
+        id: "top",
+        title: "Верх / образи",
+        type: "single", // single — один варіант у блоці, multi — можна кілька
+        items: [
+          { id: "top_bw", label: "Чорно-білий образ", hint: "скрін 1 — чорно-білий костюм" },
+          { id: "top_white", label: "Білий топ", hint: "скрін 2 — білий мереживний топ-халтер" },
+          { id: "top_black_robe", label: "Чорний комплект з накидкою", hint: "скрін 8 — чорний мереживний топ, трусики та накидка" },
+          { id: "top_none", label: "Без цього", hint: "без верхнього шару/образу", isNone: true }
+        ]
+      },
+      {
+        id: "bottom",
+        title: "Білизна / низ",
+        type: "single",
+        items: [
+          { id: "bot_red_black", label: "Червоно-чорний комплект", hint: "скрін 4 — лівчик і трусики" },
+          { id: "bot_burgundy", label: "Бордовий комплект", hint: "скрін 5 — лівчик і трусики" },
+          { id: "bot_black_lace", label: "Чорні трусики з мереживом", hint: "скрін 8 — окремий низ" },
+          { id: "bot_none", label: "Без цього", hint: "без додаткового низу", isNone: true }
+        ]
+      },
+      {
+        id: "legs",
+        title: "Ноги",
+        type: "single",
+        items: [
+          { id: "legs_light", label: "Світлі гольфи", hint: "скрін 3 — світла пара" },
+          { id: "legs_grey", label: "Сірі гольфи", hint: "скрін 3 — середня пара" },
+          { id: "legs_black", label: "Чорні гольфи", hint: "скрін 3 — темна пара" },
+          { id: "legs_none", label: "Без гольфів", hint: "без гольфів", isNone: true }
+        ]
+      },
+      {
+        id: "extras",
+        title: "Аксесуари та ігри",
+        type: "multi",
+        items: [
+          { id: "ex_belt", label: "Пояс з кільцями", hint: "скрін 7 — чорний ремінцевий пояс" },
+          { id: "ex_dev1", label: "Фіолетовий девайс 1", hint: "скрін 6 — перший фіолетовий девайс" },
+          { id: "ex_dev2", label: "Фіолетовий девайс 2", hint: "скрін 6 — другий фіолетовий девайс" },
+          { id: "ex_anal_set", label: "Набір для анальної гри", hint: "скрін 6 — пробки" },
+          { id: "ex_beads", label: "Силіконові намистини", hint: "скрін 7 — анальні намистини" },
+          { id: "ex_stim", label: "Стимулятор", hint: "скрін 7 — точковий стимулятор" },
+          { id: "ex_blindfold", label: "Пов’язка на очі", hint: "аксесуар" },
+          { id: "ex_handcuffs", label: "Наручники", hint: "аксесуар" },
+          { id: "ex_dice", label: "Кубик", hint: "ігровий кубик" },
+          { id: "ex_book", label: "Книжечка бажань і купонів", hint: "книжечка" },
+          { id: "ex_questions", label: "Програма з питаннями", hint: "додаток/програма з питаннями" }
+        ]
+      }
+    ];
+
+    // Якщо захочеш відправляти дані через свій сервер/webhook — вкажи URL тут.
+    // Якщо відкривається як Telegram Web App — дані також передаються через tg.sendData().
+    const WEBHOOK_URL = "";
+
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+    }
+
+    const state = {};
+    CONFIG_SECTIONS.forEach(sec => {
+      state[sec.id] = sec.type === "single" ? null : new Set();
+    });
+
+    const appEl = document.getElementById("app");
+
+    function render() {
+      appEl.innerHTML = "";
+      CONFIG_SECTIONS.forEach(sec => {
+        const sectionDiv = document.createElement("div");
+        sectionDiv.className = "section";
+
+        const titleDiv = document.createElement("div");
+        titleDiv.className = "section-title";
+        titleDiv.textContent = sec.title;
+        sectionDiv.appendChild(titleDiv);
+
+        const gridDiv = document.createElement("div");
+        gridDiv.className = "grid";
+
+        sec.items.forEach((item, idx) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "btn-option";
+          if (item.isNone && idx === sec.items.length - 1 && sec.items.length % 2 === 1) {
+            btn.classList.add("full-width");
+          }
+          btn.textContent = item.label;
+
+          const isSelected = sec.type === "single"
+            ? state[sec.id] === item.id
+            : state[sec.id].has(item.id);
+
+          if (isSelected) btn.classList.add("selected");
+
+          btn.addEventListener("click", () => {
+            if (sec.type === "single") {
+              state[sec.id] = state[sec.id] === item.id ? null : item.id;
+            } else {
+              if (state[sec.id].has(item.id)) {
+                state[sec.id].delete(item.id);
+              } else {
+                state[sec.id].add(item.id);
+              }
+            }
+            render();
+          });
+
+          gridDiv.appendChild(btn);
+        });
+
+        sectionDiv.appendChild(gridDiv);
+        appEl.appendChild(sectionDiv);
+      });
+    }
+
+    function buildPayload() {
+      const comment = document.getElementById("comment").value.trim();
+      const summary = {};
+
+      CONFIG_SECTIONS.forEach(sec => {
+        if (sec.type === "single") {
+          const found = sec.items.find(i => i.id === state[sec.id]);
+          summary[sec.id] = found ? { label: found.label, hint: found.hint } : null;
+        } else {
+          const selectedItems = sec.items
+            .filter(i => state[sec.id].has(i.id))
+            .map(i => ({ label: i.label, hint: i.hint }));
+          summary[sec.id] = selectedItems;
+        }
+      });
+
+      return {
+        selections: summary,
+        comment,
+        timestamp: new Date().toISOString()
+      };
+    }
+
+    function formatNotificationText(payload) {
+      const lines = ["✨ Новий вибір настрою:"];
+
+      CONFIG_SECTIONS.forEach(sec => {
+        const val = payload.selections[sec.id];
+        if (sec.type === "single") {
+          lines.push(`• ${sec.title}: ${val ? `${val.label} (${val.hint})` : "не обрано"}`);
+        } else {
+          const listText = val.length
+            ? val.map(v => `${v.label} [${v.hint}]`).join(", ")
+            : "нічого";
+          lines.push(`• ${sec.title}: ${listText}`);
+        }
+      });
+
+      if (payload.comment) {
+        lines.push(`💬 Коментар: ${payload.comment}`);
+      }
+
+      return lines.join("\n");
+    }
+
+    document.getElementById("sendBtn").addEventListener("click", async () => {
+      const statusEl = document.getElementById("status");
+      const payload = buildPayload();
+      const formattedText = formatNotificationText(payload);
+
+      try {
+        if (WEBHOOK_URL) {
+          await fetch(WEBHOOK_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...payload, formattedText })
+          });
+        }
+
+        if (tg && tg.sendData) {
+          tg.sendData(JSON.stringify({ ...payload, formattedText }));
+          statusEl.textContent = "Вибір надіслано.";
+        } else if (WEBHOOK_URL) {
+          statusEl.textContent = "Вибір надіслано.";
+        } else {
+          // Резервний варіант для тестування в браузері: копіює готове сповіщення
+          await navigator.clipboard?.writeText(formattedText);
+          statusEl.textContent = "Готовий текст сповіщення скопійовано (підключи бота/webhook для автодоставки).";
+        }
+      } catch (err) {
+        statusEl.textContent = "Не вдалося надіслати. Спробуй ще раз.";
+      }
+    });
+
+    render();
+  </script>
+</body>
+  </html>
+  
